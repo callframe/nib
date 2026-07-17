@@ -1,0 +1,10 @@
+load("@hedron_compile_commands//:refresh_compile_commands.bzl", "refresh_compile_commands")
+
+alias(
+    name = "nib",
+    actual = "//nib:nib",
+)
+
+refresh_compile_commands(
+    name = "compile_commands",
+)

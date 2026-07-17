@@ -1,0 +1,75 @@
+diff --git a/refresh.template.py b/refresh.template.py
+index 32c7aef..9ead493 100644
+--- a/refresh.template.py
++++ b/refresh.template.py
+@@ -1551,62 +1551,6 @@ def _ensure_external_workspaces_link_exists():
+     It's a win/win: It's easier for you to browse the code you use, and it eliminates whole categories of edge cases for build tooling.""")
+ 
+ 
+-def _ensure_gitignore_entries_exist():
+-    """Ensure `//compile_commands.json`, `//external`, and other useful entries are `.gitignore`'d if in a git repo."""
+-    # Silently check if we're (nested) within a git repository. It isn't sufficient to check for the presence of a `.git` directory, in case, e.g., the bazel workspace is nested inside the git repository or you're off in a git worktree.
+-    git_dir_process = subprocess.run('git rev-parse --git-common-dir', # common-dir because despite current gitignore docs, there's just one info/exclude in the common git dir, not one in each of the worktree's git dirs.
+-        shell=True,  # Ensure this will still fail with a nonzero error code even if `git` isn't installed, unifying error cases.
+-        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+-        encoding=locale.getpreferredencoding(),
+-    )
+-    # A nonzero error code indicates that we are not (nested) within a git repository.
+-    if git_dir_process.returncode: return
+-
+-    # Write into the gitignore hidden inside the .git directory
+-    # This makes ignoring work automagically for people, while minimizing the code changes they have to think about or check in. https://github.com/hedronvision/bazel-compile-commands-extractor/pull/100 and https://github.com/hedronvision/bazel-compile-commands-extractor/issues/59 are examples of use cases that this simplifies. It also marginally simplifies the case where people can't commit use of this tool to the repo they're working on.
+-    # IMO tools should to do this more broadly, especially now that git is so dominant.
+-    # Hidden gitignore documented in https://git-scm.com/docs/gitignore
+-    git_dir = pathlib.Path(git_dir_process.stdout.rstrip())
+-    (git_dir / 'info').mkdir(exist_ok=True) # Some older git versions don't auto create .git/info/, creating an error on exclude file open. See https://github.com/hedronvision/bazel-compile-commands-extractor/issues/114 for more context. We'll create the .git/info/ if needed; the git docs don't guarantee its existance. (We could instead back to writing .gitignore in the repo and bazel workspace, but we don't because this case is rare and because future git versions would be within their rights to read .git/info/exclude but not auto-create .git/info/)
+-    hidden_gitignore_path = git_dir / 'info' / 'exclude'
+-
+-    # Get path to the workspace root (current working directory) from the git repository root
+-    git_prefix_process = subprocess.run(['git', 'rev-parse', '--show-prefix'],
+-        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+-        encoding=locale.getpreferredencoding(),
+-        check=True, # Should always succeed if the other did
+-    )
+-    pattern_prefix = git_prefix_process.stdout.rstrip()
+-
+-    # Each (pattern, explanation) will be added to the `.gitignore` file if the pattern isn't present.
+-    needed_entries = [
+-        (f'/{pattern_prefix}external', "# Ignore the `external` link (that is added by `bazel-compile-commands-extractor`). The link differs between macOS/Linux and Windows, so it shouldn't be checked in. The pattern must not end with a trailing `/` because it's a symlink on macOS/Linux."),
+-        (f'/{pattern_prefix}bazel-*', "# Ignore links to Bazel's output. The pattern needs the `*` because people can change the name of the directory into which your repository is cloned (changing the `bazel-<workspace_name>` symlink), and must not end with a trailing `/` because it's a symlink on macOS/Linux. This ignore pattern should almost certainly be checked into a .gitignore in your workspace root, too, for folks who don't use this tool."),
+-        (f'/{pattern_prefix}compile_commands.json', "# Ignore generated output. Although valuable (after all, the primary purpose of `bazel-compile-commands-extractor` is to produce `compile_commands.json`!), it should not be checked in."),
+-        ('.cache/', "# Ignore the directory in which `clangd` stores its local index."),
+-    ]
+-
+-    # Create `.gitignore` if it doesn't exist (and don't truncate if it does) and open it for appending/updating.
+-    with open(hidden_gitignore_path, 'a+') as gitignore:
+-        gitignore.seek(0)  # Files opened in `a` mode seek to the end, so we reset to the beginning so we can read.
+-        # Recall that trailing spaces, when escaped with `\`, are meaningful to git. However, none of the entries for which we're searching end with literal spaces, so we can safely trim all trailing whitespace. That said, we can't rewrite these stripped lines to the file, in case an existing entry is e.g. `/foo\ `, matching the file "foo " (with a trailing space), whereas the entry `/foo\` does not match the file `"foo "`.
+-        lines = [l.rstrip() for l in gitignore]
+-        # Comments must be on their own line, so we can safely check for equality here.
+-        missing = [entry for entry in needed_entries if entry[0] not in lines]
+-        if not missing:
+-            return
+-        # Add a spacer before the header if the last line is nonempty.
+-        if lines and lines[-1]:
+-            print(file=gitignore)
+-        # Add a nice header.
+-        print("### Automatically added by Hedron's Bazel Compile Commands Extractor: https://github.com/hedronvision/bazel-compile-commands-extractor", file=gitignore)
+-        # Append the missing entries.
+-        for pattern, comment in missing:
+-            print(comment, file=gitignore)
+-            print(pattern, file=gitignore)
+-    log_success(">>> Automatically added entries to .git/info/exclude to gitignore generated output.")
+-
+-
+ def _ensure_cwd_is_workspace_root():
+     """Set the current working directory to the root of the workspace."""
+     # The `bazel run` command sets `BUILD_WORKSPACE_DIRECTORY` to "the root of the workspace where the build was run." See: https://bazel.build/docs/user-manual#running-executables.
+@@ -1622,7 +1566,6 @@ def _ensure_cwd_is_workspace_root():
+ 
+ def main():
+     _ensure_cwd_is_workspace_root()
+-    _ensure_gitignore_entries_exist()
+     _ensure_external_workspaces_link_exists()
+ 
+     target_flag_pairs = [

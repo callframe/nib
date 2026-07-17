@@ -1,0 +1,41 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+COPTS = [
+    "-std=c++17",
+    "-Wall",
+    "-Wextra",
+    "-Wpedantic",
+    "-g"
+]
+
+filegroup(
+    name = "nib_hdrs",
+    srcs = [
+        "client.h",
+        "result.h",
+        "renderer.h",
+        "common.h",
+    ],
+)
+
+filegroup(
+    name = "nib_srcs",
+    srcs = [
+        "main.cc",
+        "client.cc",
+        "renderer.cc",
+    ],
+)
+
+cc_binary(
+    name = "nib",
+    copts = COPTS,
+    srcs = [":nib_srcs", ":nib_hdrs"],
+    deps = [
+        "@sdl3//:sdl",
+        "@glm",
+        "@vulkan_headers",
+        "@vulkan_loader"
+    ],
+    visibility = ["//visibility:public"],
+)

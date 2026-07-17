@@ -1,11 +1,50 @@
 module(name = "nib")
 
+bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "rules_cc", version = "0.2.22")
-bazel_dep(name = "wolfd_bazel_compile_commands", version = "0.5.2")
+
+bazel_dep(name = "hedron_compile_commands")
+git_override(
+    module_name = "hedron_compile_commands",
+    remote = "https://github.com/helly25/bazel-compile-commands-extractor.git",
+    commit = "1f9360db1834d115c48279d38a97f30d64d3fd4a",
+    patches = ["//bazel:remove_gitignore_modification.patch"],
+    patch_strip = 1,
+)
 
 bazel_dep(name = "rules_foreign_cc")
 git_override(
     module_name = "rules_foreign_cc",
     remote = "https://github.com/bazel-contrib/rules_foreign_cc.git",
     commit = "f68b351c4691e747f889dc5e4c2cac3cd3b66ea2",
+)
+
+git_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:git.bzl","git_repository")
+
+git_repository(
+    name = "sdl3",
+    remote = "https://github.com/libsdl-org/SDL.git",
+    commit = "f87239e71e42da91ca317a12eefb82cfbf3393eb",
+    build_file = "//deps:sdl.BUILD",
+)
+
+git_repository(
+    name = "glm",
+    remote = "https://github.com/g-truc/glm.git",
+    commit = "6f14f4792a0cde5d0cf2c910506724d61cb95834",
+    build_file = "//deps:glm.BUILD",
+)
+
+git_repository(
+    name = "vulkan_headers",
+    remote = "https://github.com/KhronosGroup/Vulkan-Headers.git",
+    commit = "e3b1eec08173d6b825cd3ac88c885a63b621504a",
+    build_file = "//deps:vulkan_headers.BUILD",
+)
+
+git_repository(
+    name = "vulkan_loader",
+    remote = "https://github.com/KhronosGroup/Vulkan-Loader.git",
+    commit = "5f157b62e333c63260d05d81bf66faa216ab0fb8",
+    build_file = "//deps:vulkan_loader.BUILD",
 )
