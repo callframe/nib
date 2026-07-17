@@ -11,7 +11,7 @@ COPTS = [
 filegroup(
     name = "nib_hdrs",
     srcs = [
-        "client.h",
+        "event_loop.h",
         "result.h",
         "renderer.h",
         "common.h",
@@ -22,7 +22,7 @@ filegroup(
     name = "nib_srcs",
     srcs = [
         "main.cc",
-        "client.cc",
+        "event_loop.cc",
         "renderer.cc",
     ],
 )
@@ -35,7 +35,7 @@ cc_binary(
         "@sdl3//:sdl",
         "@glm",
         "@vulkan_headers",
-        "@vulkan_loader"
+        "@vulkan_loader",
     ],
     visibility = ["//visibility:public"],
 )
