@@ -21,8 +21,12 @@ cmake(
         },
     }),
     deps = ["@vulkan_headers"],
+    out_static_libs = select({
+        "@platforms//os:windows": ["vulkan-1.lib"],
+        "//conditions:default": [],
+    }),
     out_shared_libs = select({
-        "@platforms//os:windows": ["vulkan-1.dll"],
+        "@platforms//os:windows": [],
         "@platforms//os:macos": ["libvulkan.1.dylib"],
         "//conditions:default": ["libvulkan.so.1"],
     }),
