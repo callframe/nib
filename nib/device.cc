@@ -7,6 +7,14 @@
 #include <cstdio>
 #include <vector>
 
+#include "nib/common.h"
+
+constexpr static float QUEUE_PRIORITY = 1.0f;
+
+constexpr char const* EXTENSIONS[] = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+};
+
 static std::size_t device_score(VkPhysicalDevice adapter)
 {
   std::size_t score = 50;
@@ -16,14 +24,17 @@ static std::size_t device_score(VkPhysicalDevice adapter)
 
   switch (props.deviceType)
   {
-    case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
-      score -= 20;
-      break;
     case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
-      score -= 10;
+      score = 300;
+      break;
+    case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+      score = 200;
+      break;
+    case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+      score = 100;
       break;
     default:
-      score -= 30;
+      score = 0;
       break;
   }
 
@@ -43,7 +54,7 @@ static bool device_get_adapter(VkInstance instance, VkPhysicalDevice* out_adapte
   std::vector<VkPhysicalDevice> adapters(adapter_count);
   vkEnumeratePhysicalDevices(instance, &adapter_count, adapters.data());
 
-  VkPhysicalDevice* best_adapter = nullptr;
+  VkPhysicalDevice best_adapter = VK_NULL_HANDLE;
   std::size_t best_score = 0;
   for (VkPhysicalDevice adapter : adapters)
   {
@@ -51,21 +62,22 @@ static bool device_get_adapter(VkInstance instance, VkPhysicalDevice* out_adapte
     if (score > best_score)
     {
       best_score = score;
-      best_adapter = &adapter;
+      best_adapter = adapter;
     }
   }
 
-  *out_adapter = *best_adapter;
+  *out_adapter = best_adapter;
   return true;
 }
 
 static bool device_score_queue_family(VkPhysicalDevice adapter, VkSurfaceKHR surface,
+                                      VkQueueFamilyProperties const& family,
                                       std::uint32_t family_index)
 {
   VkBool32 present_support = VK_FALSE;
   vkGetPhysicalDeviceSurfaceSupportKHR(adapter, family_index, surface, &present_support);
 
-  return present_support && (present_support & VK_QUEUE_GRAPHICS_BIT);
+  return present_support && (family.queueFlags & VK_QUEUE_GRAPHICS_BIT);
 }
 
 static bool device_select_queue_family(VkPhysicalDevice adapter, VkSurfaceKHR surface,
@@ -84,7 +96,8 @@ static bool device_select_queue_family(VkPhysicalDevice adapter, VkSurfaceKHR su
 
   for (std::uint32_t i = 0; i < family_count; ++i)
   {
-    if (!device_score_queue_family(adapter, surface, i))
+    if (!device_score_queue_family(adapter, surface, families[i], i))
+
     {
       continue;
     }
@@ -99,13 +112,11 @@ static bool device_select_queue_family(VkPhysicalDevice adapter, VkSurfaceKHR su
 
 static VkDeviceQueueCreateInfo device_get_queue_create_info(std::uint32_t family_index)
 {
-  float priority = 1.0f;
-
   VkDeviceQueueCreateInfo create_info{};
   create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
   create_info.queueFamilyIndex = family_index;
   create_info.queueCount = 1;
-  create_info.pQueuePriorities = &priority;
+  create_info.pQueuePriorities = &QUEUE_PRIORITY;
 
   return create_info;
 }
@@ -116,6 +127,8 @@ static VkDeviceCreateInfo device_get_create_info(VkDeviceQueueCreateInfo const& 
   create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
   create_info.queueCreateInfoCount = 1;
   create_info.pQueueCreateInfos = &queue_create_info;
+  create_info.enabledExtensionCount = NIB_ARRAY_LENGTH(EXTENSIONS);
+  create_info.ppEnabledExtensionNames = EXTENSIONS;
 
   return create_info;
 }
@@ -139,7 +152,7 @@ nib::Device& nib::Device::operator=(Device&& other)
 }
 
 nib::Result<nib::Device, nib::Device_Error> nib::Device::new_(VkInstance instance,
-                                                             VkSurfaceKHR surface)
+                                                              VkSurfaceKHR surface)
 {
   VkPhysicalDevice adapter;
   if (!device_get_adapter(instance, &adapter))

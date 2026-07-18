@@ -1,5 +1,7 @@
 #pragma once
 
+#define NIB_ARRAY_LENGTH(arr) (sizeof(arr) / sizeof((arr)[0]))
+
 namespace nib
 {
 
