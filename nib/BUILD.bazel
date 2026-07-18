@@ -1,12 +1,20 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary")
 
-COPTS = [
-    "-std=c++17",
-    "-Wall",
-    "-Wextra",
-    "-Wpedantic",
-    "-g"
-]
+COPTS = select({
+    "@rules_cc//cc/compiler:msvc-cl": [
+        "/std:c++17",
+        "/W4",
+        "/Zi",
+        "/FS",
+    ],
+    "//conditions:default": [
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-g"
+    ],
+})
 
 filegroup(
     name = "nib_hdrs",

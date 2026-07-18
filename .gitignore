@@ -1,5 +1,7 @@
 /bazel-*
 /external
 .cache/
+.vs/
+.vscode/
 
 compile_commands.json
