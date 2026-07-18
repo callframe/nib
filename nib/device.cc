@@ -1,17 +1,11 @@
-#include "nib/renderer.h"
+#include "nib/device.h"
 
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan_core.h>
 
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <vector>
-
-#include "nib/common.h"
-
-constexpr std::uint32_t RENDERER_APP_VERSION = VK_MAKE_VERSION(1, 0, 0);
 
 static std::size_t device_score(VkPhysicalDevice adapter)
 {
@@ -144,19 +138,19 @@ nib::Device& nib::Device::operator=(Device&& other)
   return *this;
 }
 
-nib::Result<nib::Device, nib::Gfx_Error> nib::Device::new_(VkInstance instance,
-                                                           VkSurfaceKHR surface)
+nib::Result<nib::Device, nib::Device_Error> nib::Device::new_(VkInstance instance,
+                                                             VkSurfaceKHR surface)
 {
   VkPhysicalDevice adapter;
   if (!device_get_adapter(instance, &adapter))
   {
-    return Gfx_Error::Failed_To_Get_Adapter;
+    return Device_Error::Failed_To_Get_Adapter;
   }
 
   std::uint32_t queue_family_index;
   if (!device_select_queue_family(adapter, surface, &queue_family_index))
   {
-    return Gfx_Error::Failed_To_Get_Queue_Family;
+    return Device_Error::Failed_To_Get_Queue_Family;
   }
 
   VkDeviceQueueCreateInfo queue_create_info = device_get_queue_create_info(queue_family_index);
@@ -167,59 +161,11 @@ nib::Result<nib::Device, nib::Gfx_Error> nib::Device::new_(VkInstance instance,
   if (result != VK_SUCCESS)
   {
     std::fprintf(stderr, "Failed to create Vulkan device: %d\n", result);
-    return Gfx_Error::Failed_To_Get_Device;
+    return Device_Error::Failed_To_Get_Device;
   }
 
   VkQueue graphics_queue;
   vkGetDeviceQueue(device, queue_family_index, 0, &graphics_queue);
 
   return Device(adapter, device, graphics_queue);
-}
-
-constexpr static VkApplicationInfo renderer_get_app_info()
-{
-  VkApplicationInfo app_info{};
-  app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-  app_info.pApplicationName = nib::APP_NAME;
-  app_info.applicationVersion = RENDERER_APP_VERSION;
-  app_info.pEngineName = nib::APP_NAME;
-  app_info.engineVersion = RENDERER_APP_VERSION;
-  app_info.apiVersion = VK_API_VERSION_1_3;
-  return app_info;
-}
-
-static VkInstanceCreateInfo renderer_get_instance_create_info(VkApplicationInfo const& app_info)
-{
-  VkInstanceCreateInfo create_info{};
-  create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-  create_info.pApplicationInfo = &app_info;
-
-  std::uint32_t count = 0;
-  char const* const* extensions = SDL_Vulkan_GetInstanceExtensions(&count);
-  create_info.enabledExtensionCount = count;
-  create_info.ppEnabledExtensionNames = extensions;
-
-  return create_info;
-}
-
-nib::Result<nib::Renderer, nib::Gfx_Error> nib::Renderer::new_()
-{
-  VkApplicationInfo app_info = renderer_get_app_info();
-  VkInstanceCreateInfo create_info = renderer_get_instance_create_info(app_info);
-
-  VkInstance instance;
-  VkResult result = vkCreateInstance(&create_info, nullptr, &instance);
-  if (result != VK_SUCCESS)
-  {
-    std::fprintf(stderr, "Failed to create Vulkan instance: %d\n", result);
-    return Gfx_Error::Failed_To_Create_VkInstance;
-  }
-
-  return Renderer(instance);
-}
-
-nib::Renderer::~Renderer()
-{
-  vkDestroyInstance(instance, nullptr);
-  this->instance = nullptr;
 }

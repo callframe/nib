@@ -11,9 +11,10 @@ COPTS = [
 filegroup(
     name = "nib_hdrs",
     srcs = [
+        "app.h",
         "event_loop.h",
         "result.h",
-        "renderer.h",
+        "device.h",
         "common.h",
     ],
 )
@@ -22,8 +23,9 @@ filegroup(
     name = "nib_srcs",
     srcs = [
         "main.cc",
+        "app.cc",
         "event_loop.cc",
-        "renderer.cc",
+        "device.cc",
     ],
 )
 

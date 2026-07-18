@@ -1,67 +1,57 @@
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 
+#include <cstdint>
+#include <cstdio>
 #include <cstdlib>
-#include <utility>
 
+#include "nib/app.h"
+#include "nib/common.h"
 #include "nib/event_loop.h"
-#include "nib/renderer.h"
 
-class Nib : public nib::Application
+constexpr std::uint32_t APP_VERSION = VK_MAKE_VERSION(1, 0, 0);
+
+constexpr static VkApplicationInfo get_app_info()
 {
- public:
-  Nib(nib::Renderer* renderer)
-      : surface(VK_NULL_HANDLE), device(std::nullopt), renderer(std::move(renderer))
-  {}
+  VkApplicationInfo app_info{};
+  app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+  app_info.pApplicationName = nib::APP_NAME;
+  app_info.applicationVersion = APP_VERSION;
+  app_info.pEngineName = nib::APP_NAME;
+  app_info.engineVersion = APP_VERSION;
+  app_info.apiVersion = VK_API_VERSION_1_3;
+  return app_info;
+}
 
-  void handle_init(nib::Event_Loop& event_loop) override
+static VkInstanceCreateInfo get_instance_create_info(VkApplicationInfo const& app_info)
+{
+  VkInstanceCreateInfo create_info{};
+  create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+  create_info.pApplicationInfo = &app_info;
+
+  std::uint32_t count = 0;
+  char const* const* extensions = SDL_Vulkan_GetInstanceExtensions(&count);
+  create_info.enabledExtensionCount = count;
+  create_info.ppEnabledExtensionNames = extensions;
+
+  return create_info;
+}
+
+static VkInstance create_instance()
+{
+  VkApplicationInfo app_info = get_app_info();
+  VkInstanceCreateInfo create_info = get_instance_create_info(app_info);
+
+  VkInstance instance;
+  VkResult result = vkCreateInstance(&create_info, nullptr, &instance);
+  if (result != VK_SUCCESS)
   {
-    VkSurfaceKHR surface;
-    if (!SDL_Vulkan_CreateSurface(event_loop.get_window(), this->renderer->get_instance(), nullptr,
-                                  &surface))
-    {
-      std::fprintf(stderr, "Failed to create Vulkan surface: %s\n", SDL_GetError());
-      event_loop.exit();
-      return;
-    }
-
-    auto device_res = nib::Device::new_(this->renderer->get_instance(), surface);
-    if (!device_res)
-    {
-      std::fprintf(stderr, "Failed to create Vulkan device\n");
-      event_loop.exit();
-      vkDestroySurfaceKHR(renderer->get_instance(), surface, nullptr);
-      return;
-    }
-
-    this->surface = surface;
-    this->device = device_res.unwrap();
-    this->renderer->set_device(&this->device.value());
+    std::fprintf(stderr, "Failed to create Vulkan instance: %d\n", result);
+    return VK_NULL_HANDLE;
   }
 
-  void handle_event(nib::Event_Loop& event_loop, SDL_Event event) override
-  {
-    switch (event.type)
-    {
-      case SDL_EVENT_QUIT:
-        event_loop.exit();
-        break;
-      default:
-        break;
-    }
-  }
-
-  ~Nib()
-  {
-    vkDestroySurfaceKHR(renderer->get_instance(), surface, nullptr);
-    this->surface = VK_NULL_HANDLE;
-  }
-
- private:
-  VkSurfaceKHR surface;
-  std::optional<nib::Device> device;
-  nib::Renderer* renderer;
-};
+  return instance;
+}
 
 int main()
 {
@@ -71,26 +61,29 @@ int main()
     return EXIT_FAILURE;
   }
 
-  auto renderer_res = nib::Renderer::new_();
-  if (!renderer_res)
+  VkInstance instance = create_instance();
+  if (instance == VK_NULL_HANDLE)
   {
     SDL_Quit();
     return EXIT_FAILURE;
   }
 
-  nib::Renderer renderer = renderer_res.unwrap();
-  Nib nib(&renderer);
-
-  auto client_res = nib::Event_Loop::new_(&nib);
-  if (!client_res)
   {
-    SDL_Quit();
-    return EXIT_FAILURE;
+    Nib nib(instance);
+
+    auto client_res = nib::Event_Loop::new_(&nib);
+    if (!client_res)
+    {
+      vkDestroyInstance(instance, nullptr);
+      SDL_Quit();
+      return EXIT_FAILURE;
+    }
+
+    auto client = client_res.unwrap();
+    client.run();
   }
 
-  auto client = client_res.unwrap();
-  client.run();
-
+  vkDestroyInstance(instance, nullptr);
   SDL_Quit();
   return EXIT_SUCCESS;
 }
