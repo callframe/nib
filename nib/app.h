@@ -15,11 +15,7 @@ class Nib : public nib::Application
   void handle_init(nib::Event_Loop& event_loop) override;
   void handle_event(nib::Event_Loop& event_loop, SDL_Event event) override;
 
-  ~Nib()
-  {
-    vkDestroySurfaceKHR(this->instance, surface, nullptr);
-    this->surface = VK_NULL_HANDLE;
-  }
+  ~Nib() { vkDestroySurfaceKHR(this->instance, surface, nullptr); }
 
  private:
   VkSurfaceKHR surface;

@@ -55,6 +55,8 @@ static VkInstance create_instance()
 
 int main()
 {
+  int ec = EXIT_FAILURE;
+
   if (!SDL_Init(SDL_INIT_VIDEO))
   {
     std::fprintf(stderr, "Failed to initialize SDL: %s\n", SDL_GetError());
@@ -65,7 +67,8 @@ int main()
   if (instance == VK_NULL_HANDLE)
   {
     SDL_Quit();
-    return EXIT_FAILURE;
+    ec = EXIT_FAILURE;
+    return ec;
   }
 
   {
@@ -74,16 +77,16 @@ int main()
     auto client_res = nib::Event_Loop::new_(&nib);
     if (!client_res)
     {
-      vkDestroyInstance(instance, nullptr);
-      SDL_Quit();
-      return EXIT_FAILURE;
+      goto out;
     }
 
     auto client = client_res.unwrap();
     client.run();
   }
 
+  ec = EXIT_SUCCESS;
+out:
   vkDestroyInstance(instance, nullptr);
   SDL_Quit();
-  return EXIT_SUCCESS;
+  return ec;
 }

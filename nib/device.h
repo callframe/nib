@@ -24,16 +24,7 @@ struct Device
   Device(Device&& other);
   Device& operator=(Device&& other);
 
-  ~Device()
-  {
-    if (this->device == VK_NULL_HANDLE)
-    {
-      return;
-    }
-
-    vkDestroyDevice(device, nullptr);
-    this->device = VK_NULL_HANDLE;
-  }
+  ~Device() { vkDestroyDevice(device, nullptr); }
 
  private:
   Device(VkPhysicalDevice phys_device, VkDevice device, VkQueue graphics_queue)
