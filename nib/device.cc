@@ -2,9 +2,11 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <vector>
 
 #include "nib/common.h"
@@ -41,6 +43,35 @@ static std::size_t device_score(VkPhysicalDevice adapter)
   return score;
 }
 
+static bool device_check_adapter_extensions(VkPhysicalDevice adapter)
+{
+  std::uint32_t extension_count = 0;
+  vkEnumerateDeviceExtensionProperties(adapter, nullptr, &extension_count, nullptr);
+  if (extension_count == 0)
+  {
+    return false;
+  }
+
+  std::vector<VkExtensionProperties> got_extensions(extension_count);
+  vkEnumerateDeviceExtensionProperties(adapter, nullptr, &extension_count, got_extensions.data());
+
+  for (char const* wanted_extension : EXTENSIONS)
+  {
+    auto it = std::find_if(got_extensions.begin(), got_extensions.end(),
+                           [&](VkExtensionProperties const& extension)
+                           { return std::strcmp(wanted_extension, extension.extensionName) == 0; });
+
+    if (it == got_extensions.end())
+    {
+      return false;
+    }
+  }
+
+  return true;
+
+  return true;
+}
+
 static bool device_get_adapter(VkInstance instance, VkPhysicalDevice* out_adapter)
 {
   std::uint32_t adapter_count = 0;
@@ -58,6 +89,11 @@ static bool device_get_adapter(VkInstance instance, VkPhysicalDevice* out_adapte
   std::size_t best_score = 0;
   for (VkPhysicalDevice adapter : adapters)
   {
+    if (!device_check_adapter_extensions(adapter))
+    {
+      continue;
+    }
+
     std::size_t score = device_score(adapter);
     if (score > best_score)
     {
@@ -70,14 +106,14 @@ static bool device_get_adapter(VkInstance instance, VkPhysicalDevice* out_adapte
   return true;
 }
 
-static bool device_score_queue_family(VkPhysicalDevice adapter, VkSurfaceKHR surface,
+static bool device_check_queue_family(VkPhysicalDevice adapter, VkSurfaceKHR surface,
                                       VkQueueFamilyProperties const& family,
                                       std::uint32_t family_index)
 {
   VkBool32 present_support = VK_FALSE;
   vkGetPhysicalDeviceSurfaceSupportKHR(adapter, family_index, surface, &present_support);
 
-  return present_support && (family.queueFlags & VK_QUEUE_GRAPHICS_BIT);
+  return family.queueCount > 0 && present_support && (family.queueFlags & VK_QUEUE_GRAPHICS_BIT);
 }
 
 static bool device_select_queue_family(VkPhysicalDevice adapter, VkSurfaceKHR surface,
@@ -96,8 +132,7 @@ static bool device_select_queue_family(VkPhysicalDevice adapter, VkSurfaceKHR su
 
   for (std::uint32_t i = 0; i < family_count; ++i)
   {
-    if (!device_score_queue_family(adapter, surface, families[i], i))
-
+    if (!device_check_queue_family(adapter, surface, families[i], i))
     {
       continue;
     }
@@ -134,11 +169,15 @@ static VkDeviceCreateInfo device_get_create_info(VkDeviceQueueCreateInfo const& 
 }
 
 nib::Device::Device(Device&& other)
-    : adapter(other.adapter), device(other.device), graphics_queue(other.graphics_queue)
+    : adapter(other.adapter),
+      device(other.device),
+      device_queue(other.device_queue),
+      device_queue_family(other.device_queue_family)
 {
   other.adapter = VK_NULL_HANDLE;
   other.device = VK_NULL_HANDLE;
-  other.graphics_queue = VK_NULL_HANDLE;
+  other.device_queue = VK_NULL_HANDLE;
+  other.device_queue_family = 0;
 }
 
 nib::Device& nib::Device::operator=(Device&& other)
@@ -180,5 +219,5 @@ nib::Result<nib::Device, nib::Device_Error> nib::Device::new_(VkInstance instanc
   VkQueue graphics_queue;
   vkGetDeviceQueue(device, queue_family_index, 0, &graphics_queue);
 
-  return Device(adapter, device, graphics_queue);
+  return Device(adapter, device, graphics_queue, queue_family_index);
 }

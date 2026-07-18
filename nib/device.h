@@ -27,13 +27,18 @@ struct Device
   ~Device() { vkDestroyDevice(device, nullptr); }
 
  private:
-  Device(VkPhysicalDevice phys_device, VkDevice device, VkQueue graphics_queue)
-      : adapter(phys_device), device(device), graphics_queue(graphics_queue)
+  Device(VkPhysicalDevice phys_device, VkDevice device, VkQueue graphics_queue,
+         std::uint32_t graphics_queue_family)
+      : adapter(phys_device),
+        device(device),
+        device_queue(graphics_queue),
+        device_queue_family(graphics_queue_family)
   {}
 
   VkPhysicalDevice adapter;
   VkDevice device;
-  VkQueue graphics_queue;
+  VkQueue device_queue;
+  std::uint32_t device_queue_family;
 };
 
 }  // namespace nib
