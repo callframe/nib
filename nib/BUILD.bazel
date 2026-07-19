@@ -32,6 +32,14 @@ filegroup(
     ],
 )
 
+VULKAN_DEPS = select({
+    "@platforms//os:macos": [],
+    "//conditions:default": [
+        "@vulkan_headers",
+        "@vulkan_loader",
+    ],
+})
+
 cc_binary(
     name = "nib",
     copts = COPTS,
@@ -39,8 +47,6 @@ cc_binary(
     deps = [
         "@sdl3//:sdl",
         "@glm",
-        "@vulkan_headers",
-        "@vulkan_loader",
-    ],
+    ] + VULKAN_DEPS,
     visibility = ["//visibility:public"],
 )
