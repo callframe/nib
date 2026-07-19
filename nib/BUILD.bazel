@@ -2,13 +2,13 @@ load("@rules_cc//cc:defs.bzl", "cc_binary")
 
 COPTS = select({
     "@rules_cc//cc/compiler:msvc-cl": [
-        "/std:c++17",
+        "/std:c++20",
         "/W4",
         "/Zi",
         "/FS",
     ],
     "//conditions:default": [
-        "-std=c++17",
+        "-std=c++20",
         "-Wall",
         "-Wextra",
         "-Wpedantic",
@@ -19,11 +19,9 @@ COPTS = select({
 filegroup(
     name = "nib_hdrs",
     srcs = [
-        "app.h",
-        "event_loop.h",
-        "result.h",
-        "device.h",
         "common.h",
+        "defer.h",
+        "result.h",
     ],
 )
 
@@ -31,9 +29,6 @@ filegroup(
     name = "nib_srcs",
     srcs = [
         "main.cc",
-        "app.cc",
-        "event_loop.cc",
-        "device.cc",
     ],
 )
 

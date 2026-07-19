@@ -1,41 +1,56 @@
 #pragma once
 
-#include <cstdint>
-#include <stdexcept>
 #include <utility>
 
 namespace nib
 {
 
-enum class Result_State : uint8_t
+/**
+ * @brief Represents a successful result with a value of type T.
+ * @tparam T The type of the success value.
+ */
+template <typename T>
+struct Ok
 {
-  Empty,
-  Ok,
-  Err,
+  T value;
 };
 
+/**
+ * @brief Represents an error result with a value of type E.
+ * @tparam E The type of the error value.
+ */
+template <typename E>
+struct Err
+{
+  E value;
+};
+
+/**
+ * @brief Result type for carrying success or error values.
+ * @tparam T The type of the success value.
+ * @tparam E The type of the error value.
+ */
 template <typename T, typename E>
 class Result
 {
  public:
-  Result() : state(Result_State::Empty) {}
-  Result(T ok) : state(Result_State::Ok), ok(std::move(ok)) {}
-  Result(E err) : state(Result_State::Err), err(std::move(err)) {}
+  Result(Ok<T> ok) : is_ok(true) { new (&this->ok) T(std::move(ok.value)); }
+  Result(Err<E> err) : is_ok(false) { new (&this->err) E(std::move(err.value)); }
 
   Result(const Result& other) = delete;
   Result& operator=(const Result& other) = delete;
 
-  Result(Result&& other) noexcept : state(other.state)
+  Result(Result&& other) noexcept : is_ok(other.is_ok)
   {
-    if (state == Result_State::Ok)
+    if (this->is_ok)
     {
-      new (&ok) T(std::move(other.ok));
+      new (&this->ok) T(std::move(other.ok));
     }
-    else if (state == Result_State::Err)
+    else
     {
-      new (&err) E(std::move(other.err));
+      new (&this->err) E(std::move(other.err));
     }
-    other.state = Result_State::Empty;
+    other.is_ok = false;
   }
 
   Result& operator=(Result&& other) noexcept
@@ -50,48 +65,17 @@ class Result
 
   ~Result()
   {
-    if (state == Result_State::Ok)
+    if (this->is_ok)
     {
-      ok.~T();
+      this->ok.~T();
     }
-    else if (state == Result_State::Err)
+    else
     {
-      err.~E();
+      this->err.~E();
     }
   }
 
-  operator bool() const { return state == Result_State::Ok; }
-
-  T unwrap()
-  {
-    if (this->state != Result_State::Ok)
-    {
-      throw std::runtime_error("Result is not Ok");
-    }
-
-    T value(std::move(this->ok));
-    this->ok.~T();
-    this->state = Result_State::Empty;
-
-    return value;
-  }
-
-  E unwrap_err()
-  {
-    if (this->state != Result_State::Err)
-    {
-      throw std::runtime_error("Result is not Err");
-    }
-
-    E value(std::move(this->err));
-    this->err.~E();
-    this->state = Result_State::Empty;
-
-    return value;
-  }
-
- private:
-  Result_State state;
+  bool is_ok;
   union
   {
     T ok;
