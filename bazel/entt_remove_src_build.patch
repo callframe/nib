@@ -1,0 +1,17 @@
+diff --git a/src/BUILD.bazel b/src/BUILD.bazel
+deleted file mode 100644
+index 8bfea09..0000000
+--- a/src/BUILD.bazel
++++ /dev/null
+@@ -1,11 +0,0 @@
+-load("@bazel_skylib//lib:selects.bzl", "selects")
+-load("//bazel:copts.bzl", "COPTS")
+-
+-package(default_visibility = ["//:__subpackages__"])
+-
+-cc_library(
+-    name = "entt",
+-    includes = ["."],
+-    hdrs = glob(["**/*.h", "**/*.hpp"]),
+-    copts = COPTS,
+-)

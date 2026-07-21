@@ -20,6 +20,7 @@ git_override(
     commit = "f68b351c4691e747f889dc5e4c2cac3cd3b66ea2",
 )
 
+
 git_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:git.bzl","git_repository")
 
 git_repository(
@@ -48,4 +49,14 @@ git_repository(
     remote = "https://github.com/KhronosGroup/Vulkan-Loader.git",
     commit = "5f157b62e333c63260d05d81bf66faa216ab0fb8",
     build_file = "//deps:vulkan_loader.BUILD",
+)
+
+git_repository(
+    name = "entt",
+    remote = "https://github.com/skypjack/entt.git",
+    commit = "1333fa53129e7cfded5a9640c4336a254049917b",
+    build_file = "//deps:entt.BUILD",
+    # drop src/BUILD.bazel so src/ isn't a separate package
+    patches = ["//bazel:entt_remove_src_build.patch"],
+    patch_strip = 1,
 )

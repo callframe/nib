@@ -22,6 +22,7 @@ filegroup(
         "common.h",
         "defer.h",
         "result.h",
+        "vulkan.h",
     ],
 )
 
@@ -29,6 +30,7 @@ filegroup(
     name = "nib_srcs",
     srcs = [
         "main.cc",
+        "vulkan.cc",
     ],
 )
 
@@ -47,6 +49,7 @@ cc_binary(
     deps = [
         "@sdl3//:sdl",
         "@glm",
+        "@entt",
     ] + VULKAN_DEPS,
     visibility = ["//visibility:public"],
 )
